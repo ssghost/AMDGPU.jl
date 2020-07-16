@@ -22,8 +22,8 @@ function GPUArrays.gpu_call(::ROCBackend, f, args, threads::Int, blocks::Int;
     @show gridsize
     @show f
     @show typeof.(rocconvert.(args))
-    #AMDGPUnative.code_llvm(f, Tuple{ROCKernelContext,typeof.(rocconvert.(args))...,}; kernel=true, debuginfo=:none)
-    AMDGPUnative.code_gcn(f, Tuple{ROCKernelContext,typeof.(rocconvert.(args))...,}; kernel=true)
+    #AMDGPU.code_llvm(f, Tuple{ROCKernelContext,typeof.(rocconvert.(args))...,}; kernel=true, debuginfo=:none)
+    AMDGPU.code_gcn(f, Tuple{ROCKernelContext,typeof.(rocconvert.(args))...,}; kernel=true)
     wait(@roc groupsize=groupsize gridsize=gridsize f(ROCKernelContext(), args...))
 end
 
@@ -37,20 +37,20 @@ for (f, froc) in (
         (:threadidx, :threadIdx),
         (:griddim, :gridDimWG)
     )
-    @eval GPUArrays.$f(::ROCKernelContext) = AMDGPUnative.$froc().x
+    @eval GPUArrays.$f(::ROCKernelContext) = AMDGPU.$froc().x
 end
 
 # memory
 
 @inline function GPUArrays.LocalMemory(ctx::ROCKernelContext, ::Type{T}, ::Val{dims}, ::Val{id}) where {T,dims,id}
-    ptr = AMDGPUnative.alloc_special(Val(id), T, AMDGPUnative.AS.Local, Val(prod(dims)))
+    ptr = AMDGPU.alloc_special(Val(id), T, AMDGPU.AS.Local, Val(prod(dims)))
     ROCDeviceArray(dims, ptr)
 end
 
 # synchronization
 
 @inline function GPUArrays.synchronize_threads(::ROCKernelContext)
-    AMDGPUnative.sync_workgroup()
+    AMDGPU.sync_workgroup()
     return
 end
 
@@ -242,13 +242,13 @@ GPUArrays.backend(::Type{<:ROCArray}) = ROCBackend()
 
 function Base.convert(::Type{ROCDeviceArray{T,N,AS.Global}}, a::ROCArray{T,N}) where {T,N}
     ptr = Base.unsafe_convert(Ptr{T}, a.buf)
-    ROCDeviceArray{T,N,AS.Global}(a.dims, AMDGPUnative.DevicePtr{T,AS.Global}(ptr+a.offset))
+    ROCDeviceArray{T,N,AS.Global}(a.dims, AMDGPU.DevicePtr{T,AS.Global}(ptr+a.offset))
 end
-Adapt.adapt_storage(::AMDGPUnative.Adaptor, x::ROCArray{T,N}) where {T,N} =
+Adapt.adapt_storage(::AMDGPU.Adaptor, x::ROCArray{T,N}) where {T,N} =
     convert(ROCDeviceArray{T,N,AS.Global}, x)
 
 function GPUArrays.unsafe_reinterpret(::Type{T}, A::ROCArray, size::NTuple{N, Integer}; own=A.own) where {T, N}
-    ptr = convert(AMDGPUnative.DevicePtr{T,AS.Global}, A.buf.ptr)
+    ptr = convert(AMDGPU.DevicePtr{T,AS.Global}, A.buf.ptr)
     buf = Mem.Buffer(ptr, A.buf.bytesize, A.buf.agent)
     ROCArray{T,N}(buf, size; offset=A.offset, own=own)
 end

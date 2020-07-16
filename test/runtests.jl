@@ -61,7 +61,8 @@ if AMDGPU.configured
         end
         @testset "ROCArray" begin
             @testset "GPUArrays test suite" begin
-                TestSuite.test_construction(ROCArray)
+                #=
+                #TestSuite.test_construction(ROCArray) # WORKS, but missing in newest GPUArrays
                 TestSuite.test_gpuinterface(ROCArray)
                 #TestSuite.test_indexing(ROCArray) # Invalid addrspacecast
                 TestSuite.test_io(ROCArray)
@@ -69,10 +70,13 @@ if AMDGPU.configured
                 #TestSuite.test_mapreduce(ROCArray) # FAILS
                 #TestSuite.test_broadcasting(ROCArray) # HANGS
                 #TestSuite.test_linalg(ROCArray)
+                TestSuite.test_math(ROCArray)
                 TestSuite.test_fft(ROCArray)
                 TestSuite.test_random(ROCArray)
+                TestSuite.test_uniformscaling(ROCArray)
+                =#
 
-                # TODO: TestSuite.test(ROCArray)
+                TestSuite.test(ROCArray)
             end
             @testset "ROCm External Libraries" begin
                 isdefined(AMDGPU, :rocBLAS) ? include("rocarray/blas.jl") : @test_skip "rocBLAS"
